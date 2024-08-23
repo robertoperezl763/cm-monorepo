@@ -1,0 +1,11 @@
+{
+  "name": "cm-monorepo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "preinstall": "cd ./packages/cm-backend-service && npm install && cd../cm-web-client && npm install && cd ../../"
+  },
+  "author": "Roberto Perez",
+  "license": "ISC"
+}
