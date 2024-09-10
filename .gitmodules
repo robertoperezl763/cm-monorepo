@@ -4,3 +4,6 @@
 [submodule "packages/cm-backend-service"]
 	path = packages/cm-backend-service
 	url = https://github.com/robertoperezl763/cm-backend-service.git
+[submodule "packages/cm-ui"]
+	path = packages/cm-ui
+	url = https://github.com/robertoperezl763/cm-ui.git
