@@ -1,8 +1,35 @@
 # version: '3.9'
 
 services:
+  reverse-proxy:
+    image: traefik:v3.1
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=robertoperezl713@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+    ports:
+      # The HTTP Port
+      - "80:80"
+      # The HTTPS Port
+      - "443:443"
+      #The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to docker events
+      - letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - shared-network
+
   backend-service:
-    build: 
+    build:
       context: packages/cm-backend-service
       dockerfile: Dockerfile.prod
     restart: always
@@ -14,11 +41,13 @@ services:
       - PG_HOST=database
       - PG_PORT=5432
       - PG_USER=$PG_USER
-      - PG_PASS=$PG_PASS 
+      - PG_PASS=$PG_PASS
       - PG_DB=$PG_DB
       - JWT_SECRET=$JWT_SECRET
-    ports:
-      - ${BE_SERVICE_PORT}:${BE_SERVICE_PORT}
+    expose:
+      - $BE_SERVICE_PORT
+#    ports:
+#      - ${BE_SERVICE_PORT}:${BE_SERVICE_PORT}
     volumes:
       - ./packages/cm-backend-service:/usr/app/
       - /usr/app/node_modules
@@ -27,9 +56,17 @@ services:
     command: node ./dist/index.js
 
   web-client:
-    build: 
+    build:
       context: packages/cm-web-client
       dockerfile: Dockerfile.prod
+#    expose:
+#      - $WEB_CLIENT_PORT
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.collectionManager.rule=Host(`collection-manager.robertoperezl.com`)"
+      - "traefik.http.services.collectionManager.loadbalancer.server.port=80"
+      - "traefik.http.routers.collectionManager.entrypoints=websecure"
+      - "traefik.http.routers.collectionManager.tls.certresolver=myresolver"
     restart: always
     env_file: .env
     environment:
@@ -38,8 +75,9 @@ services:
       - AWS_BUCKET_REGION=$AWS_BUCKET_REGION
       - AWS_ACCESS_KEY=$AWS_ACCESS_KEY
       - AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-    ports:
-      - ${WEB_CLIENT_PORT}:${WEB_CLIENT_PORT}
+    deploy:
+      mode: replicated
+      replicas: 2
     volumes:
       - ./packages/cm-web-client:/usr/app/
       - /usr/app/node_modules
@@ -52,11 +90,13 @@ services:
     restart: always
     env_file: .env
     environment:
-      POSTGRES_USER: $PG_USER 
+      POSTGRES_USER: $PG_USER
       POSTGRES_PASSWORD: $PG_PASS
       POSTGRES_DB: $PG_DB
-    ports:
-      - 5432:5432
+    expose:
+      - 5432
+#    ports:
+#      - 5432:5432
     volumes:
        - dbdata:/var/lib/postgresql/data
     networks:
@@ -68,3 +108,4 @@ networks:
 
 volumes:
   dbdata:
+  letsencrypt:
