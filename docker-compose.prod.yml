@@ -75,9 +75,9 @@ services:
       - AWS_BUCKET_REGION=$AWS_BUCKET_REGION
       - AWS_ACCESS_KEY=$AWS_ACCESS_KEY
       - AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-    deploy:
-      mode: replicated
-      replicas: 2
+    # deploy:
+    #   mode: replicated
+    #   replicas: 2
     volumes:
       - ./packages/cm-web-client:/usr/app/
       - /usr/app/node_modules
